@@ -180,14 +180,23 @@ func ImportTitleEpisodes(filename string, dbUrl string) {
 	r := dsvreader.NewTSV(f)
 
 	counter := 0
-
+	seasonNum := 0
+	epsNum := 0
 	for r.Next() {
 		col1 := r.String()
 		col2 := r.String()
-		col3 := r.Int()
-		col4 := r.Int()
+		col3 := r.String()
+		col4 := r.String()
 		if counter > 0 {
-			_, err = stmt.Exec(col1, col2, col3, col4)
+			seasonNum, err = strconv.Atoi(col3)
+			if err != nil {
+				seasonNum = 0
+			}
+			epsNum, err = strconv.Atoi(col4)
+			if err != nil {
+				epsNum = 0
+			}
+			_, err = stmt.Exec(col1, col2, seasonNum, epsNum)
 			if err != nil {
 				log.Fatalf("exec: %v", err)
 			}
@@ -214,7 +223,7 @@ func ImportTitleEpisodes(filename string, dbUrl string) {
 }
 
 func ImportTitlePrincipals(filename string, dbUrl string) {
-	// tconst  ordering        nconst  category        job     characters
+	// tconst	ordering	nconst	category	job	characters
 	f, err := os.Open(filename)
 	if err != nil {
 		panic(err)
@@ -266,29 +275,33 @@ func ImportTitlePrincipals(filename string, dbUrl string) {
 
 	r := dsvreader.NewTSV(f)
 	counter := 0
-
+	ordering := 0
+	re := strings.NewReplacer("[", "", "]", "")
 	for r.Next() {
 		col1 := r.String()
-		col2 := r.Int()
+		col2 := r.String()
 		col3 := r.String()
 		col4 := r.String()
 		col5 := r.String()
-		col6 := strings.Split(r.String(), ",")
-		if col6[0] == "N" {
-			col6 = []string{}
-		}
+		col6 := strings.Split(re.Replace(r.String()), ",")
 		if col5 == "N" {
 			col5 = "" // job field
 		}
+		if col6[0] == "N" {
+			col6 = []string{}
+		}
 
 		if counter > 0 {
-			_, err = stmt.Exec(col1, col2, col3, col4, col5, pq.Array(col6))
+			ordering, err = strconv.Atoi(col2)
+			if err != nil {
+				ordering = 0
+			}
+			_, err = stmt.Exec(col1, ordering, col3, col4, col5, pq.Array(col6))
 			if err != nil {
 				log.Fatalf("exec: %v", err)
 			}
 
 		}
-
 		counter = counter + 1
 	}
 
